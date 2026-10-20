@@ -19,9 +19,13 @@ on:
   workflow_dispatch:
     inputs:
       dry_run:
-        description: Work it out and print counts, but send nothing
+        description: Work it out and print counts, but send nothing (untick to really send)
         type: boolean
         default: true
+      sample:
+        description: Skip the Sheet and post a made-up sample (Ada Test, Ben Sample) to check posting
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -57,7 +61,7 @@ jobs:
 
       - name: Already done today?
         id: done
-        if: steps.gate.outputs.go == 'true'
+        if: steps.gate.outputs.go == 'true' && inputs.sample != true
         uses: actions/cache/restore@v4
         with:
           path: .sent
@@ -84,6 +88,7 @@ jobs:
           GH_TOKEN: ${{ secrets.YAC_REPOS_TOKEN }}
           # Scheduled runs are real; by hand defaults to a dry run.
           DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run || 'false' }}
+          SAMPLE: ${{ github.event_name == 'workflow_dispatch' && inputs.sample || 'false' }}
 
       # Only a real post marks the day done. A quiet day or a dry run must not,
       # or it would block a real run later the same day.

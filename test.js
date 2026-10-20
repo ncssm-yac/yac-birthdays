@@ -1,11 +1,11 @@
 'use strict';
 const assert = require('assert');
+const { main } = require('./run');
 const { VARIANTS, parseBirthday, daysUntil, findDue, buildMessage } = require('./birthdays');
 
 let failed = 0;
-function test(name, fn) {
-  try { fn(); console.log('PASS ' + name); } catch (e) { failed += 1; console.log('FAIL ' + name + '\n  ' + e.message); }
-}
+const queue = [];
+const test = (name, fn) => queue.push({ name, fn });
 const d = (year, month, day) => ({ year, month, day });
 const HEADER = ['', 'First Name', 'Last Name', 'Role', 'Birthday', 'Status'];
 const row = (first, last, bday, status = 'Active') => ['', first, last, 'Member', bday, status];
@@ -108,4 +108,32 @@ test('only week-ahead people get the closing line for next week, not today', () 
   });
 });
 
-process.exit(failed ? 1 : 0);
+test('a sample dry run touches no Sheet, key or network', async () => {
+  const realFetch = global.fetch;
+  global.fetch = () => { throw new Error('network used'); };
+  try {
+    assert.strictEqual(await main({ SAMPLE: 'true', DRY_RUN: 'true' }), 'dry');
+  } finally { global.fetch = realFetch; }
+});
+
+test('a real sample needs a token and never counts as a real post', async () => {
+  await assert.rejects(() => main({ SAMPLE: 'true', DRY_RUN: 'false' }), /GH_TOKEN/);
+  const calls = [];
+  const realFetch = global.fetch;
+  global.fetch = async (url, opts) => { calls.push({ url, body: JSON.parse(opts.body) }); return { status: 204 }; };
+  try {
+    assert.strictEqual(await main({ SAMPLE: 'true', DRY_RUN: 'false', GH_TOKEN: 'x', SPACE: 'it' }), 'sample');
+  } finally { global.fetch = realFetch; }
+  assert.strictEqual(calls.length, 1);
+  assert.strictEqual(calls[0].body.inputs.source, 'yac-birthdays');
+  assert.strictEqual(calls[0].body.inputs.space, 'it');
+  assert.ok(calls[0].body.inputs.text.includes('(TEST)') && calls[0].body.inputs.text.includes('Ada Test'));
+});
+
+(async () => {
+  for (const { name, fn } of queue) {
+    try { await fn(); console.log('PASS ' + name); } catch (e) { failed += 1; console.log('FAIL ' + name + '\n  ' + e.message); }
+  }
+  console.log('\n' + (queue.length - failed) + ' passed, ' + failed + ' failed');
+  process.exit(failed ? 1 : 0);
+})();
