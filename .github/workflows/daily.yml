@@ -1,0 +1,97 @@
+name: Birthday reminders
+
+# Every day at 8 AM Eastern: find birthdays that are today or a week away in
+# the YAC Member Directory and hand one message to ncssm-yac/yac-chat.
+# TEST PHASE: posts go to YAC IT only (yac-chat refuses the yac-birthdays
+# source anywhere else). Moving to YAC Leadership is the owner's decision:
+# widen the source in yac-chat's spaces.json, then change SPACE and TEST below.
+#
+# Secrets: YAKKETY_GOOGLE_KEY (the yakkety service account, Viewer on the YAC
+# Member Directory), YAC_REPOS_TOKEN (fine-grained: Actions write on
+# yac-chat). Logs show counts only, never names or dates.
+on:
+  schedule:
+    # 8 AM Eastern is 12:00 UTC in summer and 13:00 UTC in winter. Both fire;
+    # the gate lets through the first one that is 8 AM or later in New York,
+    # once per day, so a delayed run still goes and a double doesn't.
+    - cron: '0 12 * * *'
+    - cron: '0 13 * * *'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: Work it out and print counts, but send nothing
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: birthdays
+  cancel-in-progress: false
+
+env:
+  SHEET_ID: 1imJ__Ll68PiNXnzYuGYthpwzKe65aqvNwUSbnApUmu4
+  SPACE: it
+  TEST: 'true'
+
+jobs:
+  remind:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Is it time?
+        id: gate
+        env:
+          EVENT: ${{ github.event_name }}
+        run: |
+          set -euo pipefail
+          today=$(TZ=America/New_York date +%F)
+          hour=$(TZ=America/New_York date +%H)
+          echo "key=birthdays-sent-$today" >> "$GITHUB_OUTPUT"
+          if [ "$EVENT" = "schedule" ] && { [ "$hour" -lt 8 ] || [ "$hour" -gt 11 ]; }; then
+            echo "It is $hour:00 in New York; reminders go out from 8 to 11 AM."
+            echo "go=false" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          echo "go=true" >> "$GITHUB_OUTPUT"
+
+      - name: Already done today?
+        id: done
+        if: steps.gate.outputs.go == 'true'
+        uses: actions/cache/restore@v4
+        with:
+          path: .sent
+          key: ${{ steps.gate.outputs.key }}
+          lookup-only: true
+
+      - uses: actions/checkout@v4
+        if: steps.gate.outputs.go == 'true' && steps.done.outputs.cache-hit != 'true'
+      - uses: actions/setup-node@v4
+        if: steps.gate.outputs.go == 'true' && steps.done.outputs.cache-hit != 'true'
+        with:
+          node-version: 20
+
+      - name: Run tests
+        if: steps.gate.outputs.go == 'true' && steps.done.outputs.cache-hit != 'true'
+        run: npm test
+
+      - name: Remind
+        id: remind
+        if: steps.gate.outputs.go == 'true' && steps.done.outputs.cache-hit != 'true'
+        run: node run.js
+        env:
+          SA_JSON: ${{ secrets.YAKKETY_GOOGLE_KEY }}
+          GH_TOKEN: ${{ secrets.YAC_REPOS_TOKEN }}
+          # Scheduled runs are real; by hand defaults to a dry run.
+          DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run || 'false' }}
+
+      - name: Remember that today is done
+        if: steps.remind.outputs.result == 'posted' || steps.remind.outputs.result == 'quiet'
+        env:
+          KEY: ${{ steps.gate.outputs.key }}
+        run: mkdir -p .sent && echo "$KEY" > .sent/done
+      - uses: actions/cache/save@v4
+        if: steps.remind.outputs.result == 'posted' || steps.remind.outputs.result == 'quiet'
+        with:
+          path: .sent
+          key: ${{ steps.gate.outputs.key }}

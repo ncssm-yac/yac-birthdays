@@ -1,0 +1,111 @@
+'use strict';
+const assert = require('assert');
+const { VARIANTS, parseBirthday, daysUntil, findDue, buildMessage } = require('./birthdays');
+
+let failed = 0;
+function test(name, fn) {
+  try { fn(); console.log('PASS ' + name); } catch (e) { failed += 1; console.log('FAIL ' + name + '\n  ' + e.message); }
+}
+const d = (year, month, day) => ({ year, month, day });
+const HEADER = ['', 'First Name', 'Last Name', 'Role', 'Birthday', 'Status'];
+const row = (first, last, bday, status = 'Active') => ['', first, last, 'Member', bday, status];
+
+test('parses month/day, with or without a year', () => {
+  assert.deepStrictEqual(parseBirthday('12/16'), { month: 12, day: 16 });
+  assert.deepStrictEqual(parseBirthday(' 3/7/1999 '), { month: 3, day: 7 });
+  assert.deepStrictEqual(parseBirthday('2/29'), { month: 2, day: 29 });
+});
+
+test('rejects blanks, words and impossible dates', () => {
+  ['', null, undefined, 'March 3', '13/1', '0/5', '4/31', '2/30', '6/0'].forEach((v) => assert.strictEqual(parseBirthday(v), null, String(v)));
+});
+
+test('counts days, including across the new year', () => {
+  assert.strictEqual(daysUntil(d(2026, 10, 20), { month: 10, day: 20 }), 0);
+  assert.strictEqual(daysUntil(d(2026, 10, 20), { month: 10, day: 27 }), 7);
+  assert.strictEqual(daysUntil(d(2026, 12, 28), { month: 1, day: 4 }), 7);
+  assert.strictEqual(daysUntil(d(2026, 10, 20), { month: 10, day: 19 }), 364);
+});
+
+test('a Feb 29 birthday is celebrated on Feb 28 in a non-leap year, Feb 29 in a leap year', () => {
+  assert.strictEqual(daysUntil(d(2027, 2, 28), { month: 2, day: 29 }), 0);
+  assert.strictEqual(daysUntil(d(2027, 2, 21), { month: 2, day: 29 }), 7);
+  assert.strictEqual(daysUntil(d(2028, 2, 29), { month: 2, day: 29 }), 0);
+  assert.strictEqual(daysUntil(d(2028, 2, 28), { month: 2, day: 29 }), 1);
+});
+
+test('finds today and one-week birthdays among Active members only', () => {
+  const rows = [HEADER, row('Ada', 'Test', '10/20'), row('Ben', 'Sample', '10/27'), row('Cy', 'Demo', '10/21'),
+    row('Dee', 'Gone', '10/20', 'Inactive'), row('Eli', 'Blank', ''), row('Fay', 'Typo', 'soon')];
+  const due = findDue(rows, d(2026, 10, 20));
+  assert.deepStrictEqual(due.today, ['Ada Test']);
+  assert.deepStrictEqual(due.week, ['Ben Sample']);
+  assert.strictEqual(due.skipped, 2);
+});
+
+test('finds columns by header name, in any order', () => {
+  const rows = [['Status', 'Birthday', 'First Name'], ['Active', '1/4', 'Gus']];
+  assert.deepStrictEqual(findDue(rows, d(2026, 12, 28)).week, ['Gus']);
+});
+
+test('a Sheet without the needed columns fails loudly', () => {
+  assert.throws(() => findDue([['First Name', 'Status'], ['Hal', 'Active']], d(2026, 1, 1)), /Birthday/);
+});
+
+test('says nothing on a quiet day', () => {
+  assert.strictEqual(buildMessage({ week: [], today: [] }, d(2026, 10, 20)), null);
+});
+
+const at = (i) => () => (i + 0.5) / VARIANTS.length; // picks variant i
+const EMOJI = /\p{Extended_Pictographic}/gu;
+const MIXED = { week: ['Ben Sample', 'Cy Demo'], today: ['Ada Test'] };
+
+test('there are ten variants', () => {
+  assert.strictEqual(VARIANTS.length, 10);
+});
+
+test('every variant follows the minutes-post shape, with two emojis', () => {
+  VARIANTS.forEach((_, i) => {
+    const msg = buildMessage(MIXED, d(2026, 10, 20), { test: true, pick: at(i) });
+    const lines = msg.split('\n');
+    assert.ok(lines[0].startsWith('*Yakkety here!*'), i + ' opener');
+    assert.ok(lines[0].includes('(TEST)'), i + ' test tag');
+    assert.ok(msg.includes('\u2022 Ada Test'), i + ' today bullet');
+    assert.ok(msg.includes('\u2022 Ben Sample (Oct 27)') && msg.includes('\u2022 Cy Demo (Oct 27)'), i + ' week bullets');
+    assert.strictEqual((msg.match(EMOJI) || []).length, 2, i + ' two emojis');
+    assert.strictEqual((lines[0].match(EMOJI) || []).length, 1, i + ' one in the opener');
+    assert.strictEqual((lines[lines.length - 1].match(EMOJI) || []).length, 1, i + ' one in the closer');
+    lines.filter((l) => !l.startsWith('\u2022') && l !== lines[0] && l !== lines[lines.length - 1])
+      .forEach((l) => assert.ok(l.endsWith(':'), i + ' section line leads into bullets: ' + l));
+  });
+});
+
+test('every variant reads right for one person and for several, today and next week', () => {
+  VARIANTS.forEach((_, i) => {
+    [{ week: [], today: ['A One'] }, { week: [], today: ['A One', 'B Two'] }, { week: ['A One'], today: [] }, { week: ['A One', 'B Two'], today: [] }]
+      .forEach((due) => {
+        const msg = buildMessage(due, d(2026, 10, 20), { pick: at(i) });
+        assert.ok(msg.includes('\u2022 A One'), i);
+        assert.ok(!msg.includes('TEST'), i);
+        assert.ok(!msg.includes('undefined'), i);
+      });
+  });
+});
+
+test('different picks give different messages, and the pick is random by default', () => {
+  const texts = new Set(VARIANTS.map((_, i) => buildMessage(MIXED, d(2026, 10, 20), { pick: at(i) })));
+  assert.strictEqual(texts.size, 10);
+  const seen = new Set();
+  for (let n = 0; n < 200; n += 1) seen.add(buildMessage(MIXED, d(2026, 10, 20)));
+  assert.ok(seen.size > 5);
+  assert.ok(buildMessage(MIXED, d(2026, 10, 20), { pick: () => 0.9999999 }));
+});
+
+test('only week-ahead people get the closing line for next week, not today', () => {
+  VARIANTS.forEach((v, i) => {
+    assert.ok(buildMessage({ week: ['A One'], today: [] }, d(2026, 10, 20), { pick: at(i) }).endsWith(v.closeWeek));
+    assert.ok(buildMessage({ week: [], today: ['A One'] }, d(2026, 10, 20), { pick: at(i) }).endsWith(v.closeToday));
+  });
+});
+
+process.exit(failed ? 1 : 0);
