@@ -64,7 +64,7 @@ test('there are ten variants', () => {
   assert.strictEqual(VARIANTS.length, 10);
 });
 
-test('every variant follows the minutes-post shape and stays light on emojis', () => {
+test('every variant follows the minutes-post shape, with two emojis', () => {
   VARIANTS.forEach((_, i) => {
     const msg = buildMessage(MIXED, d(2026, 10, 20), { test: true, pick: at(i) });
     const lines = msg.split('\n');
@@ -72,8 +72,11 @@ test('every variant follows the minutes-post shape and stays light on emojis', (
     assert.ok(lines[0].includes('(TEST)'), i + ' test tag');
     assert.ok(msg.includes('\u2022 Ada Test'), i + ' today bullet');
     assert.ok(msg.includes('\u2022 Ben Sample (Oct 27)') && msg.includes('\u2022 Cy Demo (Oct 27)'), i + ' week bullets');
-    assert.ok((msg.match(EMOJI) || []).length <= 4, i + ' emoji count');
-    lines.forEach((l) => assert.ok((l.match(EMOJI) || []).length <= 1 || l === lines[0], i + ' one emoji per line'));
+    assert.strictEqual((msg.match(EMOJI) || []).length, 2, i + ' two emojis');
+    assert.strictEqual((lines[0].match(EMOJI) || []).length, 1, i + ' one in the opener');
+    assert.strictEqual((lines[lines.length - 1].match(EMOJI) || []).length, 1, i + ' one in the closer');
+    lines.filter((l) => !l.startsWith('\u2022') && l !== lines[0] && l !== lines[lines.length - 1])
+      .forEach((l) => assert.ok(l.endsWith(':'), i + ' section line leads into bullets: ' + l));
   });
 });
 

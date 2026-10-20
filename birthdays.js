@@ -77,39 +77,51 @@ const label = (today, plusDays) => {
 
 // Ten wordings, one picked at random per post so the messages don't all read
 // the same. Same shape as Yakkety's meeting-minutes posts: "*Yakkety here!*"
-// opener, one bullet per person, a closing line. Goofy, but light on emojis
-// (at most one per line). Each section has [one person, several people].
+// opener, one bullet per person, a closing line. Goofy, with two emojis per
+// post: one ending the opener, one ending the closer. Section lines end in a
+// colon and lead straight into the bullets. Each section has
+// [one person, several people]; closers say "them", which fits either.
 const VARIANTS = [
-  { open: '\u{1F9AC}', today: ['Stop the herd, it\'s a birthday today! \u{1F382}', 'Stop the herd, we have birthdays today! \u{1F382}'],
-    week: ['A birthday is galloping our way in one week! \u{1F43E}', 'Birthdays are galloping our way in one week! \u{1F43E}'],
-    closeToday: 'A quick cheer would be yak-tastic!', closeWeek: 'Time to start planning some yak-tastic wishes!' },
-  { open: 'Hold onto your horns!', today: ['Someone in the herd is a year shaggier today \u{1F389}', 'Some of the herd are a year shaggier today \u{1F389}'],
-    week: ['Next week, one of us gets even more fabulous.', 'Next week, a few of us get even more fabulous.'],
-    closeToday: 'Go say happy birthday!', closeWeek: 'Mark your calendars, herd.' },
-  { open: 'Moo-ving news (okay, yak-ing news)!', today: ['It\'s a birthday today! \u{1F973}', 'It\'s a double (or more) birthday day! \u{1F973}'],
-    week: ['One week until the party starts:', 'One week until the parties start:'],
-    closeToday: 'Please shower them with good wishes.', closeWeek: 'Start warming up those good wishes.' },
-  { open: 'Birthday radar is beeping! \u{1F4E1}', today: ['Direct hit, it\'s today:', 'Direct hits, they\'re all today:'],
+  { open: 'Stop the herd! 🦬',
+    today: ['There\'s a birthday today:', 'There are birthdays today:'],
+    week: ['Galloping in one week from now:', 'Galloping in one week from now:'],
+    closeToday: 'A quick "happy birthday" would be yak-tastic! 🎂', closeWeek: 'Plenty of time to plan something yak-tastic! 🎈' },
+  { open: 'Hold onto your horns! 🐂',
+    today: ['One of the herd is officially a year shaggier today:', 'Some of the herd are officially a year shaggier today:'],
+    week: ['A year shaggier in one week:', 'A year shaggier in one week:'],
+    closeToday: 'Go wish them a happy birthday! 🎉', closeWeek: 'Pop it on your calendar! 🗓️' },
+  { open: 'Yak-breaking news! 📣',
+    today: ['Celebrating today:', 'Celebrating today:'],
+    week: ['Celebrating one week from today:', 'Celebrating one week from today:'],
+    closeToday: 'Send some birthday love their way! 💌', closeWeek: 'Start warming up those birthday wishes! 💌' },
+  { open: 'Birthday radar is beeping! 📡',
+    today: ['Direct hit, it\'s today:', 'Direct hits, they\'re today:'],
     week: ['Incoming in 7 days:', 'Incoming in 7 days:'],
-    closeToday: 'A cheer or a card would land perfectly.', closeWeek: 'Plenty of time to plan something sweet.' },
-  { open: 'The yak report is in!', today: ['Today we celebrate \u{1F382}', 'Today we celebrate \u{1F382}'],
-    week: ['Coming up next week:', 'Coming up next week:'],
-    closeToday: 'Spread the yak love!', closeWeek: 'Spread the yak love early!' },
-  { open: '\u{1F389} Grab your party hooves!', today: ['It\'s birthday time, right now, today:', 'It\'s birthday time, right now, today:'],
-    week: ['The party calendar says one week out:', 'The party calendar says one week out:'],
-    closeToday: 'Cake wishes are accepted in Chat.', closeWeek: 'Start thinking about cake wishes.' },
-  { open: 'Fresh from the pasture:', today: ['A birthday has arrived! \u{1F381}', 'Birthdays have arrived! \u{1F381}'],
+    closeToday: 'A cheer or a card would land perfectly. 🎯', closeWeek: 'Plenty of time to plan a perfect landing. 🎯' },
+  { open: 'The yak report is in! 🌟',
+    today: ['Today\'s birthday star:', 'Today\'s birthday stars:'],
+    week: ['Next week\'s birthday star:', 'Next week\'s birthday stars:'],
+    closeToday: 'Spread the yak love! 💛', closeWeek: 'Spread the yak love early! 💛' },
+  { open: 'Grab your party hooves! 🎉',
+    today: ['It\'s birthday time for:', 'It\'s birthday time for:'],
+    week: ['Party countdown (one week to go):', 'Party countdown (one week to go):'],
+    closeToday: 'Drop them a happy birthday! 🥳', closeWeek: 'Start practicing your party moves! 🕺' },
+  { open: 'Fresh from the pasture! 🌾',
+    today: ['A birthday has arrived:', 'Birthdays have arrived:'],
     week: ['A birthday is grazing closer, one week to go:', 'Birthdays are grazing closer, one week to go:'],
-    closeToday: 'Be the first to say happy birthday!', closeWeek: 'You have a whole week to get the wishes ready.' },
-  { open: 'Ding dong, the yak is here!', today: ['The birthday bell rings today \u{1F514}', 'The birthday bells ring today \u{1F514}'],
-    week: ['The bell will ring in a week for:', 'The bells will ring in a week for:'],
-    closeToday: 'Give them a big herd hello.', closeWeek: 'Get your cheers ready, herd.' },
-  { open: 'Yak attack of good news! \u{1F4E3}', today: ['Today is their big day:', 'Today is their big day:'],
-    week: ['Their big day is one week away:', 'Their big days are one week away:'],
-    closeToday: 'Send some birthday magic their way.', closeWeek: 'Time to gather the birthday magic.' },
-  { open: 'Roll out the hay bales! \u{1F973}', today: ['Birthday alert, it\'s today:', 'Birthday alerts, they\'re today:'],
+    closeToday: 'Be the first to say happy birthday! 🎁', closeWeek: 'A whole week to get the wishes ready! 🎁' },
+  { open: 'Ring the cowbell! 🔔',
+    today: ['The birthday bell rings today for:', 'The birthday bells ring today for:'],
+    week: ['The birthday bell rings in one week for:', 'The birthday bells ring in one week for:'],
+    closeToday: 'Give them a big herd hello! 👋', closeWeek: 'Get your cheers warmed up, herd! 📣' },
+  { open: 'Shaggy greetings, herd! 👋',
+    today: ['Today is the big day for:', 'Today is the big day for:'],
+    week: ['The big day is one week away for:', 'The big day is one week away for:'],
+    closeToday: 'Send some birthday magic their way! ✨', closeWeek: 'Time to gather the birthday magic! ✨' },
+  { open: 'Roll out the hay bales! 🥳',
+    today: ['Birthday alert for today:', 'Birthday alerts for today:'],
     week: ['Birthday alert for next week:', 'Birthday alerts for next week:'],
-    closeToday: 'A happy birthday goes a long way.', closeWeek: 'A little planning goes a long way.' }
+    closeToday: 'A happy birthday goes a long way! 🎂', closeWeek: 'A little planning goes a long way! 🗓️' }
 ];
 
 // `pick` returns a number in [0, 1); pass a stub in tests. Returns null when
