@@ -8,6 +8,8 @@
 //   SPACE      yac-chat space key, default "it"
 //   TEST       "true" (default) marks the message TEST
 //   DRY_RUN    "true" to work it out and print counts, sending nothing
+//   SAMPLE     "true" to skip the Sheet and post a made-up sample (Ada Test,
+//              Ben Sample), to check the whole posting path
 //   GH_TOKEN   token that can dispatch post.yml in ncssm-yac/yac-chat
 // Logs counts only, never names, dates or the message.
 'use strict';
@@ -50,7 +52,20 @@ async function dispatch(env, space, text) {
   if (res.status !== 204) throw new Error('Handing the post to yac-chat failed: ' + res.status);
 }
 
+// Posts a made-up message (always marked TEST) so the token, yac-chat and the
+// webhook can be checked without a real birthday. Never touches the Sheet.
+async function sample(env) {
+  const today = todayInNewYork();
+  const text = buildMessage({ today: ['Ada Test'], week: ['Ben Sample'] }, today, { test: true });
+  if (String(env.DRY_RUN) === 'true') { console.log('Sample, dry run: would post a made-up message, sending nothing.'); return 'dry'; }
+  if (!env.GH_TOKEN) throw new Error('GH_TOKEN is required to post.');
+  await dispatch(env, env.SPACE || 'it', text);
+  console.log('Sample handed to yac-chat for ' + (env.SPACE || 'it') + '.');
+  return 'sample';
+}
+
 async function main(env) {
+  if (String(env.SAMPLE) === 'true') return sample(env);
   if (!env.SA_JSON || !env.SHEET_ID) throw new Error('SA_JSON and SHEET_ID are required.');
   const today = todayInNewYork();
   const rows = await readRows(await accessToken(env.SA_JSON), env.SHEET_ID, env.SHEET_RANGE || 'Sheet1!A1:Z1000');

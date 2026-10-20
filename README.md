@@ -33,6 +33,10 @@ Birthdays are personal data: they stay in the Sheet. Logs show counts only.
 Actions → **Birthday reminders** → Run workflow. *Dry run* (the default)
 prints counts and sends nothing. Untick it to send a real TEST post to YAC IT.
 
+**Check the posting path:** tick *Skip the Sheet and post a made-up sample* and untick *dry run*. It skips the
+Sheet and posts a made-up TEST message (Ada Test, Ben Sample) to YAC IT, so the
+token, `yac-chat` and the webhook are checked without a real birthday.
+
 ## Going live in YAC Leadership
 
 Owner's decision. Then: in `yac-chat`, add `"leadership"` to the
