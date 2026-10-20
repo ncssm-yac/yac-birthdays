@@ -16,8 +16,8 @@ approves moving to YAC Leadership.
    Only `Active` members count.
 3. `birthdays.js` picks people whose birthday is **today** or **7 days
    away**. Feb 29 birthdays are celebrated on Feb 28 in non-leap years.
-4. One message, from Yakkety (AI), goes to `ncssm-yac/yac-chat` as source
-   `yac-birthdays`. No birthdays that day means no post.
+4. One message, worded by one of ten goofy variants picked at random, goes to `ncssm-yac/yac-chat` as source
+   `yac-birthdays`. From Yakkety (AI). No birthdays that day means no post.
 
 Birthdays are personal data: they stay in the Sheet. Logs show counts only.
 

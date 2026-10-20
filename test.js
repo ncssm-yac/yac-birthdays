@@ -1,6 +1,6 @@
 'use strict';
 const assert = require('assert');
-const { parseBirthday, daysUntil, findDue, buildMessage } = require('./birthdays');
+const { VARIANTS, parseBirthday, daysUntil, findDue, buildMessage } = require('./birthdays');
 
 let failed = 0;
 function test(name, fn) {
@@ -56,22 +56,53 @@ test('says nothing on a quiet day', () => {
   assert.strictEqual(buildMessage({ week: [], today: [] }, d(2026, 10, 20)), null);
 });
 
-test('message follows the minutes-post shape: opener, one bullet per person, closer', () => {
-  const msg = buildMessage({ week: ['Ben Sample', 'Cy Demo'], today: ['Ada Test'] }, d(2026, 10, 20), { test: true });
-  assert.ok(msg.startsWith('*Yakkety here!*'));
-  assert.ok(msg.includes('(TEST)'));
-  assert.ok(msg.includes('birthday TODAY'));
-  assert.ok(msg.includes('\u2022 \u{1F388} Ada Test'));
-  assert.ok(msg.includes('\u2022 \u{1F389} Ben Sample (Oct 27)'));
-  assert.ok(msg.includes('\u2022 \u{1F389} Cy Demo (Oct 27)'));
-  assert.ok(!buildMessage({ week: ['Ben Sample'], today: [] }, d(2026, 10, 20)).includes('TEST'));
+const at = (i) => () => (i + 0.5) / VARIANTS.length; // picks variant i
+const EMOJI = /\p{Extended_Pictographic}/gu;
+const MIXED = { week: ['Ben Sample', 'Cy Demo'], today: ['Ada Test'] };
+
+test('there are ten variants', () => {
+  assert.strictEqual(VARIANTS.length, 10);
 });
 
-test('wording agrees with how many people there are', () => {
-  assert.ok(buildMessage({ week: [], today: ['A One'] }, d(2026, 10, 20)).includes('a birthday TODAY'));
-  assert.ok(buildMessage({ week: [], today: ['A One', 'B Two'] }, d(2026, 10, 20)).includes('birthdays TODAY'));
-  assert.ok(buildMessage({ week: ['A One'], today: [] }, d(2026, 10, 20)).includes('a birthday is galloping'));
-  assert.ok(buildMessage({ week: ['A One', 'B Two'], today: [] }, d(2026, 10, 20)).includes('birthdays are galloping'));
+test('every variant follows the minutes-post shape and stays light on emojis', () => {
+  VARIANTS.forEach((_, i) => {
+    const msg = buildMessage(MIXED, d(2026, 10, 20), { test: true, pick: at(i) });
+    const lines = msg.split('\n');
+    assert.ok(lines[0].startsWith('*Yakkety here!*'), i + ' opener');
+    assert.ok(lines[0].includes('(TEST)'), i + ' test tag');
+    assert.ok(msg.includes('\u2022 Ada Test'), i + ' today bullet');
+    assert.ok(msg.includes('\u2022 Ben Sample (Oct 27)') && msg.includes('\u2022 Cy Demo (Oct 27)'), i + ' week bullets');
+    assert.ok((msg.match(EMOJI) || []).length <= 4, i + ' emoji count');
+    lines.forEach((l) => assert.ok((l.match(EMOJI) || []).length <= 1 || l === lines[0], i + ' one emoji per line'));
+  });
+});
+
+test('every variant reads right for one person and for several, today and next week', () => {
+  VARIANTS.forEach((_, i) => {
+    [{ week: [], today: ['A One'] }, { week: [], today: ['A One', 'B Two'] }, { week: ['A One'], today: [] }, { week: ['A One', 'B Two'], today: [] }]
+      .forEach((due) => {
+        const msg = buildMessage(due, d(2026, 10, 20), { pick: at(i) });
+        assert.ok(msg.includes('\u2022 A One'), i);
+        assert.ok(!msg.includes('TEST'), i);
+        assert.ok(!msg.includes('undefined'), i);
+      });
+  });
+});
+
+test('different picks give different messages, and the pick is random by default', () => {
+  const texts = new Set(VARIANTS.map((_, i) => buildMessage(MIXED, d(2026, 10, 20), { pick: at(i) })));
+  assert.strictEqual(texts.size, 10);
+  const seen = new Set();
+  for (let n = 0; n < 200; n += 1) seen.add(buildMessage(MIXED, d(2026, 10, 20)));
+  assert.ok(seen.size > 5);
+  assert.ok(buildMessage(MIXED, d(2026, 10, 20), { pick: () => 0.9999999 }));
+});
+
+test('only week-ahead people get the closing line for next week, not today', () => {
+  VARIANTS.forEach((v, i) => {
+    assert.ok(buildMessage({ week: ['A One'], today: [] }, d(2026, 10, 20), { pick: at(i) }).endsWith(v.closeWeek));
+    assert.ok(buildMessage({ week: [], today: ['A One'] }, d(2026, 10, 20), { pick: at(i) }).endsWith(v.closeToday));
+  });
 });
 
 process.exit(failed ? 1 : 0);
