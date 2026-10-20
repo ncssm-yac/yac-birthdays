@@ -70,25 +70,34 @@ function findDue(rows, today) {
   return out;
 }
 
-const list = (names) =>
-  names.length <= 2 ? names.join(' and ') : names.slice(0, -1).join(', ') + ', and ' + names[names.length - 1];
-
 const label = (today, plusDays) => {
   const t = new Date(Date.UTC(today.year, today.month - 1, today.day + plusDays));
   return MONTHS[t.getUTCMonth()] + ' ' + t.getUTCDate();
 };
 
-// null when there is nothing to say.
+// Same shape as Yakkety's meeting-minutes posts: "*Yakkety here!*" opener,
+// one bullet per person, a closing line. Goofy on purpose. null when there is
+// nothing to say.
 function buildMessage(due, today, { test = false } = {}) {
   if (!due.week.length && !due.today.length) return null;
-  const lines = ['\u{1F382} *YAC birthdays*' + (test ? ' (TEST)' : '')];
+  const one = (n) => n === 1;
+  const lines = [];
+  lines.push('*Yakkety here!* \u{1F9AC}\u{1F389}' + (test ? ' _(TEST)_' : ''));
   if (due.today.length) {
-    lines.push('Today (' + label(today, 0) + '): ' + list(due.today) + '. A note or a cheer would make their day!');
+    lines.push(one(due.today.length)
+      ? 'Stop the herd, it\'s a birthday TODAY! \u{1F382}\u{1F973}'
+      : 'Stop the herd, we have birthdays TODAY! \u{1F382}\u{1F973}');
+    due.today.forEach((n) => lines.push('\u2022 \u{1F388} ' + n));
   }
   if (due.week.length) {
-    lines.push('One week from today (' + label(today, 7) + '): ' + list(due.week) + '.');
+    lines.push(one(due.week.length)
+      ? 'Heads up, herd: a birthday is galloping our way in one week! \u{1F43E}\u{1F381}'
+      : 'Heads up, herd: birthdays are galloping our way in one week! \u{1F43E}\u{1F381}');
+    due.week.forEach((n) => lines.push('\u2022 \u{1F389} ' + n + ' (' + label(today, 7) + ')'));
   }
-  lines.push('— Yakkety (AI)');
+  lines.push(due.today.length
+    ? 'A quick cheer or a "happy birthday" would be yak-tastic! \u{1F4AC}\u{1F389}'
+    : 'Time to start planning some yak-tastic wishes! \u{1F4AC}\u{1F389}');
   return lines.join('\n');
 }
 

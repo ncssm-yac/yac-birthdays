@@ -56,18 +56,22 @@ test('says nothing on a quiet day', () => {
   assert.strictEqual(buildMessage({ week: [], today: [] }, d(2026, 10, 20)), null);
 });
 
-test('message names people, the date and Yakkety, and marks tests', () => {
+test('message follows the minutes-post shape: opener, one bullet per person, closer', () => {
   const msg = buildMessage({ week: ['Ben Sample', 'Cy Demo'], today: ['Ada Test'] }, d(2026, 10, 20), { test: true });
+  assert.ok(msg.startsWith('*Yakkety here!*'));
   assert.ok(msg.includes('(TEST)'));
-  assert.ok(msg.includes('Today (Oct 20): Ada Test'));
-  assert.ok(msg.includes('One week from today (Oct 27): Ben Sample and Cy Demo'));
-  assert.ok(msg.endsWith('Yakkety (AI)'));
+  assert.ok(msg.includes('birthday TODAY'));
+  assert.ok(msg.includes('\u2022 \u{1F388} Ada Test'));
+  assert.ok(msg.includes('\u2022 \u{1F389} Ben Sample (Oct 27)'));
+  assert.ok(msg.includes('\u2022 \u{1F389} Cy Demo (Oct 27)'));
   assert.ok(!buildMessage({ week: ['Ben Sample'], today: [] }, d(2026, 10, 20)).includes('TEST'));
 });
 
-test('lists three names with commas', () => {
-  const msg = buildMessage({ week: ['A One', 'B Two', 'C Three'], today: [] }, d(2026, 10, 20));
-  assert.ok(msg.includes('A One, B Two, and C Three'));
+test('wording agrees with how many people there are', () => {
+  assert.ok(buildMessage({ week: [], today: ['A One'] }, d(2026, 10, 20)).includes('a birthday TODAY'));
+  assert.ok(buildMessage({ week: [], today: ['A One', 'B Two'] }, d(2026, 10, 20)).includes('birthdays TODAY'));
+  assert.ok(buildMessage({ week: ['A One'], today: [] }, d(2026, 10, 20)).includes('a birthday is galloping'));
+  assert.ok(buildMessage({ week: ['A One', 'B Two'], today: [] }, d(2026, 10, 20)).includes('birthdays are galloping'));
 });
 
 process.exit(failed ? 1 : 0);
