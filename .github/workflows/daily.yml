@@ -85,13 +85,15 @@ jobs:
           # Scheduled runs are real; by hand defaults to a dry run.
           DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run || 'false' }}
 
+      # Only a real post marks the day done. A quiet day or a dry run must not,
+      # or it would block a real run later the same day.
       - name: Remember that today is done
-        if: steps.remind.outputs.result == 'posted' || steps.remind.outputs.result == 'quiet'
+        if: steps.remind.outputs.result == 'posted'
         env:
           KEY: ${{ steps.gate.outputs.key }}
         run: mkdir -p .sent && echo "$KEY" > .sent/done
       - uses: actions/cache/save@v4
-        if: steps.remind.outputs.result == 'posted' || steps.remind.outputs.result == 'quiet'
+        if: steps.remind.outputs.result == 'posted'
         with:
           path: .sent
           key: ${{ steps.gate.outputs.key }}
