@@ -108,3 +108,15 @@ jobs:
         with:
           path: .sent
           key: ${{ steps.gate.outputs.key }}
+
+      # The day's last try must not end green without reminding. A run that
+      # skips Remind still ends "success", which hid two weeks of missed
+      # reminders (Oct 20 to Nov 2, 2026). Failing here makes the ci: check in
+      # Yakkety's monitor see it too.
+      - name: Did today get its reminder?
+        if: github.event.schedule == '17 18 * * *' && steps.remind.outcome != 'success' && steps.done.outputs.cache-hit != 'true'
+        env:
+          GO: ${{ steps.gate.outputs.go }}
+        run: |
+          echo "::error::The last scheduled try today ended without running Remind (gate: go=$GO). Run it by hand from Actions with dry run unticked."
+          exit 1
