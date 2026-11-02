@@ -11,11 +11,14 @@ name: Birthday reminders
 # yac-chat). Logs show counts only, never names or dates.
 on:
   schedule:
-    # 8 AM Eastern is 12:00 UTC in summer and 13:00 UTC in winter. Both fire;
-    # the gate lets through the first one that is 8 AM or later in New York,
-    # once per day, so a delayed run still goes and a double doesn't.
-    - cron: '0 12 * * *'
-    - cron: '0 13 * * *'
+    # 8 AM Eastern is 12:00 UTC in summer and 13:00 UTC in winter. GitHub
+    # delays scheduled runs, often by 4-5 hours at the top of the hour, so
+    # there are several tries off the hour. The gate lets through the first
+    # one that is 8 AM or later in New York, and the cache stops a double.
+    - cron: '17 12 * * *'
+    - cron: '17 13 * * *'
+    - cron: '17 15 * * *'
+    - cron: '17 18 * * *'
   workflow_dispatch:
     inputs:
       dry_run:
@@ -53,8 +56,11 @@ jobs:
           today=$(TZ=America/New_York date +%F)
           hour=$(TZ=America/New_York date +%H)
           echo "key=birthdays-sent-$today" >> "$GITHUB_OUTPUT"
-          if [ "$EVENT" = "schedule" ] && { [ "$hour" -lt 8 ] || [ "$hour" -gt 11 ]; }; then
-            echo "It is $hour:00 in New York; reminders go out from 8 to 11 AM."
+          # Any time from 8 AM to midnight: a late reminder beats none. (The old
+          # 8-11 AM window blocked every scheduled run, since they arrived after
+          # noon.)
+          if [ "$EVENT" = "schedule" ] && [ "$hour" -lt 8 ]; then
+            echo "It is $hour:00 in New York; reminders go out from 8 AM."
             echo "go=false" >> "$GITHUB_OUTPUT"; exit 0
           fi
           echo "go=true" >> "$GITHUB_OUTPUT"
