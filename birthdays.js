@@ -77,7 +77,7 @@ const label = (today, plusDays) => {
 
 // Ten wordings, one picked at random per post so the messages don't all read
 // the same. Same shape as Yakkety's meeting-minutes posts: "*Yakkety here!*"
-// opener, one bullet per person, a closing line. Goofy, with two emojis per
+// opener and first section line, one bullet per person, a blank line, then a closing line. Goofy, with two emojis per
 // post: one ending the opener, one ending the closer. Section lines end in a
 // colon and lead straight into the bullets. Each section has
 // [one person, several people]; closers say "them", which fits either.
@@ -130,16 +130,19 @@ function buildMessage(due, today, { test = false, pick = Math.random } = {}) {
   if (!due.week.length && !due.today.length) return null;
   const v = VARIANTS[Math.min(VARIANTS.length - 1, Math.floor(pick() * VARIANTS.length))];
   const plural = (names) => (names.length === 1 ? 0 : 1);
-  const lines = ['*Yakkety here!* ' + v.open + (test ? ' _(TEST)_' : '')];
-  if (due.today.length) {
-    lines.push(v.today[plural(due.today)]);
-    due.today.forEach((n) => lines.push('\u2022 ' + n));
-  }
-  if (due.week.length) {
-    lines.push(v.week[plural(due.week)]);
-    due.week.forEach((n) => lines.push('\u2022 ' + n + ' (' + label(today, 7) + ')'));
-  }
-  lines.push(due.today.length ? v.closeToday : v.closeWeek);
+  // The first section line shares the opener's line; a second section and the
+  // closer each get a blank line before them (owner's preference, Nov 6, 2026).
+  const sections = [];
+  if (due.today.length) sections.push([v.today[plural(due.today)], ...due.today.map((n) => '\u2022 ' + n)]);
+  if (due.week.length) sections.push([v.week[plural(due.week)], ...due.week.map((n) => '\u2022 ' + n + ' (' + label(today, 7) + ')')]);
+  const opener = '*Yakkety here!* ' + v.open + (test ? ' _(TEST)_' : '');
+  const lines = [];
+  sections.forEach(([head, ...bullets], i) => {
+    if (i === 0) lines.push(opener + ' ' + head);
+    else lines.push('', head);
+    lines.push(...bullets);
+  });
+  lines.push('', due.today.length ? v.closeToday : v.closeWeek);
   return lines.join('\n');
 }
 

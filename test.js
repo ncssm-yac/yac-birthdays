@@ -75,9 +75,17 @@ test('every variant follows the minutes-post shape, with two emojis', () => {
     assert.strictEqual((msg.match(EMOJI) || []).length, 2, i + ' two emojis');
     assert.strictEqual((lines[0].match(EMOJI) || []).length, 1, i + ' one in the opener');
     assert.strictEqual((lines[lines.length - 1].match(EMOJI) || []).length, 1, i + ' one in the closer');
-    lines.filter((l) => !l.startsWith('\u2022') && l !== lines[0] && l !== lines[lines.length - 1])
+    assert.ok(lines[0].endsWith(':'), i + ' first section line shares the opener line');
+    assert.strictEqual(lines[lines.length - 2], '', i + ' blank line before the closer');
+    lines.filter((l) => l && !l.startsWith('\u2022') && l !== lines[0] && l !== lines[lines.length - 1])
       .forEach((l) => assert.ok(l.endsWith(':'), i + ' section line leads into bullets: ' + l));
   });
+});
+
+test('one week-out birthday reads as three short lines plus the closer', () => {
+  const v = VARIANTS[8];
+  assert.strictEqual(buildMessage({ week: ['Ben Sample'], today: [] }, d(2026, 11, 5), { pick: at(8) }),
+    '*Yakkety here!* ' + v.open + ' ' + v.week[0] + '\n\u2022 Ben Sample (Nov 12)\n\n' + v.closeWeek);
 });
 
 test('every variant reads right for one person and for several, today and next week', () => {
