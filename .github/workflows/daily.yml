@@ -3,9 +3,8 @@ name: Birthday reminders
 # Every day at 8 AM Eastern: find birthdays that are today or a week away in
 # the YAC Member Directory and hand one message to ncssm-yac/yac-chat.
 # Live in YAC Leadership since Nov 6, 2026 (owner's decision; yac-chat allows
-# the yac-birthdays source in leadership and it). The made-up sample still
-# goes to YAC IT, marked TEST, so checking the posting path never reaches
-# Leadership.
+# the yac-birthdays source there only). A made-up sample run also posts to
+# YAC Leadership, marked TEST.
 #
 # Secrets: YAKKETY_GOOGLE_KEY (the yakkety service account, Viewer on the YAC
 # Member Directory), YAC_REPOS_TOKEN (fine-grained: Actions write on
@@ -27,7 +26,7 @@ on:
         type: boolean
         default: true
       sample:
-        description: Skip the Sheet and post a made-up sample (Ada Test, Ben Sample) to YAC IT to check posting
+        description: Skip the Sheet and post a made-up sample (Ada Test, Ben Sample) to YAC Leadership, marked TEST, to check posting
         type: boolean
         default: false
 
@@ -40,7 +39,7 @@ concurrency:
 
 env:
   SHEET_ID: 1imJ__Ll68PiNXnzYuGYthpwzKe65aqvNwUSbnApUmu4
-  SPACE: ${{ inputs.sample == true && 'it' || 'leadership' }}
+  SPACE: leadership
   TEST: 'false'
 
 jobs:
