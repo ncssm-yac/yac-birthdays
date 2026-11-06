@@ -3,8 +3,8 @@
 Tells YAC leadership when a member's birthday is a week away and on the day.
 A deterministic tool for Yakkety, the YAC AI Secretary: no model calls.
 
-**Test phase.** Reminders go to **YAC IT** only, marked TEST, until the owner
-approves moving to YAC Leadership.
+**Live in YAC Leadership** since Nov 6, 2026 (owner's decision). Made-up
+samples still go to **YAC IT**, marked TEST.
 
 ## How it works
 
@@ -33,17 +33,18 @@ Birthdays are personal data: they stay in the Sheet. Logs show counts only.
 ## Trying it
 
 Actions → **Birthday reminders** → Run workflow. *Dry run* (the default)
-prints counts and sends nothing. Untick it to send a real TEST post to YAC IT.
+prints counts and sends nothing. Untick it to send the real reminder to YAC Leadership.
 
 **Check the posting path:** tick *Skip the Sheet and post a made-up sample* and untick *dry run*. It skips the
 Sheet and posts a made-up TEST message (Ada Test, Ben Sample) to YAC IT, so the
 token, `yac-chat` and the webhook are checked without a real birthday.
 
-## Going live in YAC Leadership
+## Where it posts
 
-Owner's decision. Then: in `yac-chat`, add `"leadership"` to the
-`yac-birthdays` source in `spaces.json` (and its test); here, set `SPACE:
-leadership` and `TEST: 'false'` in `daily.yml`.
+YAC Leadership (`SPACE` in `daily.yml`), unmarked. A sample run goes to YAC IT
+instead and is always marked TEST. `yac-chat`'s `spaces.json` allows the
+`yac-birthdays` source in `leadership` and `it` only; changing that is the
+owner's decision.
 
 ```bash
 npm test     # no network, no secrets
