@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-// Daily run: read the Member Directory, work out whose birthday is today or
-// a week away, and hand one message to yac-chat. Inputs come from the
+// Daily run: read the Member Directory, work out whose birthday is today,
+// three days away or a week away, and hand one message to yac-chat. Inputs come from the
 // environment:
 //   SA_JSON    the yakkety service account key (secret)
 //   SHEET_ID   the YAC Member Directory spreadsheet
@@ -56,7 +56,7 @@ async function dispatch(env, space, text) {
 // webhook can be checked without a real birthday. Never touches the Sheet.
 async function sample(env) {
   const today = todayInNewYork();
-  const text = buildMessage({ today: ['Ada Test'], week: ['Ben Sample'] }, today, { test: true });
+  const text = buildMessage({ today: ['Ada Test'], soon: ['Cy Demo'], week: ['Ben Sample'] }, today, { test: true });
   if (String(env.DRY_RUN) === 'true') { console.log('Sample, dry run: would post a made-up message, sending nothing.'); return 'dry'; }
   if (!env.GH_TOKEN) throw new Error('GH_TOKEN is required to post.');
   await dispatch(env, env.SPACE || 'it', text);
@@ -72,7 +72,7 @@ async function main(env) {
   const due = findDue(rows, today);
   const text = buildMessage(due, today, { test: String(env.TEST || 'true') !== 'false' });
   console.log('Active members with a birthday: ' + (due.considered - due.skipped) + ' (' + due.skipped + ' active without a readable one).');
-  console.log('Today: ' + due.today.length + ', one week out: ' + due.week.length + '.');
+  console.log('Today: ' + due.today.length + ', three days out: ' + due.soon.length + ', one week out: ' + due.week.length + '.');
   if (!text) { console.log('Nothing to announce.'); return 'quiet'; }
   if (String(env.DRY_RUN) === 'true') { console.log('Dry run: would post, sending nothing.'); return 'dry'; }
   if (!env.GH_TOKEN) throw new Error('GH_TOKEN is required to post.');
