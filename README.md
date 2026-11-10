@@ -1,6 +1,7 @@
 # yac-birthdays
 
-Tells YAC leadership when a member's birthday is a week away and on the day.
+Tells YAC leadership when a member's birthday is a week away, three days away
+and on the day.
 A deterministic tool for Yakkety, the YAC AI Secretary: no model calls.
 
 **Live in YAC Leadership** since Nov 6, 2026 (owner's decision). Made-up
@@ -16,7 +17,7 @@ samples still go to **YAC IT**, marked TEST.
    account. It finds columns by header name: `First Name`, `Last Name`,
    `Birthday` (month/day, like `12/16`; a year is ignored) and `Status`.
    Only `Active` members count.
-3. `birthdays.js` picks people whose birthday is **today** or **7 days
+3. `birthdays.js` picks people whose birthday is **today**, **3 days** or **7 days
    away**. Feb 29 birthdays are celebrated on Feb 28 in non-leap years.
 4. One message, worded by one of ten goofy variants picked at random, goes to `ncssm-yac/yac-chat` as source
    `yac-birthdays`. From Yakkety (AI). No birthdays that day means no post.

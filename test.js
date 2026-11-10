@@ -34,11 +34,13 @@ test('a Feb 29 birthday is celebrated on Feb 28 in a non-leap year, Feb 29 in a 
   assert.strictEqual(daysUntil(d(2028, 2, 28), { month: 2, day: 29 }), 1);
 });
 
-test('finds today and one-week birthdays among Active members only', () => {
+test('finds today, three-day and one-week birthdays among Active members only', () => {
   const rows = [HEADER, row('Ada', 'Test', '10/20'), row('Ben', 'Sample', '10/27'), row('Cy', 'Demo', '10/21'),
+    row('Gil', 'Soon', '10/23'), row('Hap', 'Five', '10/25'),
     row('Dee', 'Gone', '10/20', 'Inactive'), row('Eli', 'Blank', ''), row('Fay', 'Typo', 'soon')];
   const due = findDue(rows, d(2026, 10, 20));
   assert.deepStrictEqual(due.today, ['Ada Test']);
+  assert.deepStrictEqual(due.soon, ['Gil Soon']);
   assert.deepStrictEqual(due.week, ['Ben Sample']);
   assert.strictEqual(due.skipped, 2);
 });
@@ -58,7 +60,7 @@ test('says nothing on a quiet day', () => {
 
 const at = (i) => () => (i + 0.5) / VARIANTS.length; // picks variant i
 const EMOJI = /\p{Extended_Pictographic}/gu;
-const MIXED = { week: ['Ben Sample', 'Cy Demo'], today: ['Ada Test'] };
+const MIXED = { week: ['Ben Sample', 'Cy Demo'], soon: ['Gil Soon'], today: ['Ada Test'] };
 
 test('there are ten variants', () => {
   assert.strictEqual(VARIANTS.length, 10);
@@ -72,6 +74,8 @@ test('every variant follows the minutes-post shape, with two emojis', () => {
     assert.ok(lines[0].includes('(TEST)'), i + ' test tag');
     assert.ok(msg.includes('\u2022 Ada Test'), i + ' today bullet');
     assert.ok(msg.includes('\u2022 Ben Sample (Oct 27)') && msg.includes('\u2022 Cy Demo (Oct 27)'), i + ' week bullets');
+    assert.ok(msg.includes('\u2022 Gil Soon (Oct 23)'), i + ' three-day bullet');
+    assert.ok(msg.indexOf('Ada Test') < msg.indexOf('Gil Soon') && msg.indexOf('Gil Soon') < msg.indexOf('Ben Sample'), i + ' today, then three days, then a week');
     assert.strictEqual((msg.match(EMOJI) || []).length, 2, i + ' two emojis');
     assert.strictEqual((lines[0].match(EMOJI) || []).length, 1, i + ' one in the opener');
     assert.strictEqual((lines[lines.length - 1].match(EMOJI) || []).length, 1, i + ' one in the closer');
@@ -90,7 +94,8 @@ test('one week-out birthday reads as three short lines plus the closer', () => {
 
 test('every variant reads right for one person and for several, today and next week', () => {
   VARIANTS.forEach((_, i) => {
-    [{ week: [], today: ['A One'] }, { week: [], today: ['A One', 'B Two'] }, { week: ['A One'], today: [] }, { week: ['A One', 'B Two'], today: [] }]
+    [{ week: [], today: ['A One'] }, { week: [], today: ['A One', 'B Two'] }, { week: ['A One'], today: [] }, { week: ['A One', 'B Two'], today: [] },
+      { week: [], soon: ['A One'], today: [] }, { week: [], soon: ['A One', 'B Two'], today: [] }]
       .forEach((due) => {
         const msg = buildMessage(due, d(2026, 10, 20), { pick: at(i) });
         assert.ok(msg.includes('\u2022 A One'), i);
@@ -113,6 +118,8 @@ test('only week-ahead people get the closing line for next week, not today', () 
   VARIANTS.forEach((v, i) => {
     assert.ok(buildMessage({ week: ['A One'], today: [] }, d(2026, 10, 20), { pick: at(i) }).endsWith(v.closeWeek));
     assert.ok(buildMessage({ week: [], today: ['A One'] }, d(2026, 10, 20), { pick: at(i) }).endsWith(v.closeToday));
+    assert.ok(buildMessage({ week: ['B Two'], soon: ['A One'], today: [] }, d(2026, 10, 20), { pick: at(i) }).endsWith(v.closeSoon));
+    assert.ok(!/week/i.test(v.soon.join(' ') + v.closeSoon), i + ' three-day lines never say week');
   });
 });
 

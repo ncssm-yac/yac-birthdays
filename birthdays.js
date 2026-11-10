@@ -52,7 +52,7 @@ function findDue(rows, today) {
   if (iFirst < 0 || iBirthday < 0 || iStatus < 0) {
     throw new Error('The Sheet needs First Name, Birthday and Status columns.');
   }
-  const out = { week: [], today: [], skipped: 0, considered: 0 };
+  const out = { week: [], soon: [], today: [], skipped: 0, considered: 0 };
   rows.slice(1).forEach((r) => {
     if (String(r[iStatus] || '').trim().toLowerCase() !== 'active') return;
     const first = String(r[iFirst] || '').trim();
@@ -63,9 +63,11 @@ function findDue(rows, today) {
     const name = iLast >= 0 && String(r[iLast] || '').trim() ? first + ' ' + String(r[iLast]).trim() : first;
     const d = daysUntil(today, b);
     if (d === 0) out.today.push(name);
+    else if (d === 3) out.soon.push(name);
     else if (d === 7) out.week.push(name);
   });
   out.week.sort();
+  out.soon.sort();
   out.today.sort();
   return out;
 }
@@ -85,55 +87,67 @@ const VARIANTS = [
   { open: 'Stop the herd! 🦬',
     today: ['There\'s a birthday today:', 'There are birthdays today:'],
     week: ['Galloping in one week from now:', 'Galloping in one week from now:'],
-    closeToday: 'A quick "happy birthday" would be yak-tastic! 🎂', closeWeek: 'Plenty of time to plan something yak-tastic! 🎈' },
+    closeToday: 'A quick "happy birthday" would be yak-tastic! 🎂', closeWeek: 'Plenty of time to plan something yak-tastic! 🎈',
+    soon: ['Galloping in just three days:', 'Galloping in just three days:'], closeSoon: 'Three days to plan something yak-tastic! 🎈' },
   { open: 'Hold onto your horns! 🐂',
     today: ['One of the herd is officially a year shaggier today:', 'Some of the herd are officially a year shaggier today:'],
     week: ['A year shaggier in one week:', 'A year shaggier in one week:'],
-    closeToday: 'Go wish them a happy birthday! 🎉', closeWeek: 'Pop it on your calendar! 🗓️' },
+    closeToday: 'Go wish them a happy birthday! 🎉', closeWeek: 'Pop it on your calendar! 🗓️',
+    soon: ['A year shaggier in three days:', 'A year shaggier in three days:'], closeSoon: 'Make sure it\'s on your calendar! 🗓️' },
   { open: 'Yak-breaking news! 📣',
     today: ['Celebrating today:', 'Celebrating today:'],
     week: ['Celebrating one week from today:', 'Celebrating one week from today:'],
-    closeToday: 'Send some birthday love their way! 💌', closeWeek: 'Start warming up those birthday wishes! 💌' },
+    closeToday: 'Send some birthday love their way! 💌', closeWeek: 'Start warming up those birthday wishes! 💌',
+    soon: ['Celebrating three days from today:', 'Celebrating three days from today:'], closeSoon: 'Get those birthday wishes ready! 💌' },
   { open: 'Birthday radar is beeping! 📡',
     today: ['Direct hit, it\'s today:', 'Direct hits, they\'re today:'],
     week: ['Incoming in 7 days:', 'Incoming in 7 days:'],
-    closeToday: 'A cheer or a card would land perfectly. 🎯', closeWeek: 'Plenty of time to plan a perfect landing. 🎯' },
+    closeToday: 'A cheer or a card would land perfectly. 🎯', closeWeek: 'Plenty of time to plan a perfect landing. 🎯',
+    soon: ['Incoming in 3 days:', 'Incoming in 3 days:'], closeSoon: 'Final approach: line up those wishes. 🎯' },
   { open: 'The yak report is in! 🌟',
     today: ['Today\'s birthday star:', 'Today\'s birthday stars:'],
     week: ['Next week\'s birthday star:', 'Next week\'s birthday stars:'],
-    closeToday: 'Spread the yak love! 💛', closeWeek: 'Spread the yak love early! 💛' },
+    closeToday: 'Spread the yak love! 💛', closeWeek: 'Spread the yak love early! 💛',
+    soon: ['Birthday star in three days:', 'Birthday stars in three days:'], closeSoon: 'Spread the yak love early! 💛' },
   { open: 'Grab your party hooves! 🎉',
     today: ['It\'s birthday time for:', 'It\'s birthday time for:'],
     week: ['Party countdown (one week to go):', 'Party countdown (one week to go):'],
-    closeToday: 'Drop them a happy birthday! 🥳', closeWeek: 'Start practicing your party moves! 🕺' },
+    closeToday: 'Drop them a happy birthday! 🥳', closeWeek: 'Start practicing your party moves! 🕺',
+    soon: ['Party countdown (three days to go):', 'Party countdown (three days to go):'], closeSoon: 'Time to warm up those party moves! 🕺' },
   { open: 'Fresh from the pasture! 🌾',
     today: ['A birthday has arrived:', 'Birthdays have arrived:'],
     week: ['A birthday is grazing closer, one week to go:', 'Birthdays are grazing closer, one week to go:'],
-    closeToday: 'Be the first to say happy birthday! 🎁', closeWeek: 'A whole week to get the wishes ready! 🎁' },
+    closeToday: 'Be the first to say happy birthday! 🎁', closeWeek: 'A whole week to get the wishes ready! 🎁',
+    soon: ['A birthday is grazing closer, three days to go:', 'Birthdays are grazing closer, three days to go:'], closeSoon: 'Three days to get the wishes ready! 🎁' },
   { open: 'Ring the cowbell! 🔔',
     today: ['The birthday bell rings today for:', 'The birthday bells ring today for:'],
     week: ['The birthday bell rings in one week for:', 'The birthday bells ring in one week for:'],
-    closeToday: 'Give them a big herd hello! 👋', closeWeek: 'Get your cheers warmed up, herd! 📣' },
+    closeToday: 'Give them a big herd hello! 👋', closeWeek: 'Get your cheers warmed up, herd! 📣',
+    soon: ['The birthday bell rings in three days for:', 'The birthday bells ring in three days for:'], closeSoon: 'Get your cheers warmed up, herd! 📣' },
   { open: 'Shaggy greetings, herd! 👋',
     today: ['Today is the big day for:', 'Today is the big day for:'],
     week: ['The big day is one week away for:', 'The big day is one week away for:'],
-    closeToday: 'Send some birthday magic their way! ✨', closeWeek: 'Time to gather the birthday magic! ✨' },
+    closeToday: 'Send some birthday magic their way! ✨', closeWeek: 'Time to gather the birthday magic! ✨',
+    soon: ['The big day is three days away for:', 'The big day is three days away for:'], closeSoon: 'Time to gather the birthday magic! ✨' },
   { open: 'Roll out the hay bales! 🥳',
     today: ['Birthday alert for today:', 'Birthday alerts for today:'],
     week: ['Birthday alert for next week:', 'Birthday alerts for next week:'],
-    closeToday: 'A happy birthday goes a long way! 🎂', closeWeek: 'A little planning goes a long way! 🗓️' }
+    closeToday: 'A happy birthday goes a long way! 🎂', closeWeek: 'A little planning goes a long way! 🗓️',
+    soon: ['Birthday alert, three days out:', 'Birthday alerts, three days out:'], closeSoon: 'A little planning goes a long way! 🗓️' }
 ];
 
 // `pick` returns a number in [0, 1); pass a stub in tests. Returns null when
 // there is nothing to say.
 function buildMessage(due, today, { test = false, pick = Math.random } = {}) {
-  if (!due.week.length && !due.today.length) return null;
+  const soon = due.soon || [];
+  if (!due.week.length && !soon.length && !due.today.length) return null;
   const v = VARIANTS[Math.min(VARIANTS.length - 1, Math.floor(pick() * VARIANTS.length))];
   const plural = (names) => (names.length === 1 ? 0 : 1);
   // The first section line shares the opener's line; a second section and the
   // closer each get a blank line before them (owner's preference, Nov 6, 2026).
   const sections = [];
   if (due.today.length) sections.push([v.today[plural(due.today)], ...due.today.map((n) => '\u2022 ' + n)]);
+  if (soon.length) sections.push([v.soon[plural(soon)], ...soon.map((n) => '\u2022 ' + n + ' (' + label(today, 3) + ')')]);
   if (due.week.length) sections.push([v.week[plural(due.week)], ...due.week.map((n) => '\u2022 ' + n + ' (' + label(today, 7) + ')')]);
   const opener = '*Yakkety here!* ' + v.open + (test ? ' _(TEST)_' : '');
   const lines = [];
@@ -142,7 +156,7 @@ function buildMessage(due, today, { test = false, pick = Math.random } = {}) {
     else lines.push('', head);
     lines.push(...bullets);
   });
-  lines.push('', due.today.length ? v.closeToday : v.closeWeek);
+  lines.push('', due.today.length ? v.closeToday : soon.length ? v.closeSoon : v.closeWeek);
   return lines.join('\n');
 }
 
