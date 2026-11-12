@@ -145,6 +145,56 @@ test('a real sample needs a token and never counts as a real post', async () => 
   assert.ok(calls[0].body.inputs.text.includes('(TEST)') && calls[0].body.inputs.text.includes('Ada Test'));
 });
 
+// trigger/Code.gs (Apps Script) with stubbed Google services.
+function loadTrigger(codes, token = 'tok') {
+  const calls = [];
+  const triggers = [];
+  global.PropertiesService = { getScriptProperties: () => ({ getProperty: (k) => (k === 'GITHUB_TOKEN' ? token : null) }) };
+  global.UrlFetchApp = { fetch: (url, opts) => { calls.push({ url, opts }); return { getResponseCode: () => codes.shift() }; } };
+  global.Utilities = { sleep: () => {} };
+  const builder = { spec: {} };
+  ['timeBased', 'everyDays', 'atHour', 'nearMinute', 'inTimezone'].forEach((m) => { builder[m] = (v) => { builder.spec[m] = v; return builder; }; });
+  builder.create = () => { triggers.push({ ...builder.spec }); };
+  const old = { getHandlerFunction: () => 'dispatch' };
+  const deleted = [];
+  global.ScriptApp = { getProjectTriggers: () => [old], deleteTrigger: (t) => deleted.push(t), newTrigger: (fn) => { builder.spec = { fn }; return builder; } };
+  delete require.cache[require.resolve('./trigger/Code.gs')];
+  return { mod: require('./trigger/Code.gs'), calls, triggers, deleted };
+}
+
+test('the 8 AM trigger starts daily.yml for real on main', () => {
+  const { mod, calls } = loadTrigger([204]);
+  assert.strictEqual(mod.dispatch(), 204);
+  assert.strictEqual(calls.length, 1);
+  assert.strictEqual(calls[0].url, 'https://api.github.com/repos/ncssm-yac/yac-birthdays/actions/workflows/daily.yml/dispatches');
+  assert.deepStrictEqual(JSON.parse(calls[0].opts.payload), { ref: 'main', inputs: { dry_run: 'false', sample: 'false' } });
+  assert.strictEqual(calls[0].opts.headers.Authorization, 'Bearer tok');
+});
+
+test('the 8 AM trigger retries, then fails loudly', () => {
+  const ok = loadTrigger([502, 204]);
+  assert.strictEqual(ok.mod.dispatch(), 204);
+  assert.strictEqual(ok.calls.length, 2);
+  const bad = loadTrigger([500, 500, 401]);
+  assert.throws(() => bad.mod.dispatch(), /HTTP 401/);
+  assert.strictEqual(bad.calls.length, 3);
+  assert.throws(() => loadTrigger([204], null).mod.dispatch(), /GITHUB_TOKEN/);
+});
+
+test('install makes one daily trigger at 8 AM New York time', () => {
+  const { mod, triggers, deleted } = loadTrigger([]);
+  mod.install();
+  assert.strictEqual(deleted.length, 1);
+  assert.deepStrictEqual(triggers, [{ fn: 'dispatch', timeBased: undefined, atHour: 8, nearMinute: 0, everyDays: 1, inTimezone: 'America/New_York' }]);
+});
+
+test('daily.yml lets a dispatched run post for real and still has the GitHub schedule as backup', () => {
+  const yml = require('fs').readFileSync(require('path').join(__dirname, '.github/workflows/daily.yml'), 'utf8');
+  assert.ok(yml.includes('workflow_dispatch:'));
+  assert.ok(/DRY_RUN: \$\{\{ github\.event_name == 'workflow_dispatch' && inputs\.dry_run \|\| 'false' \}\}/.test(yml));
+  assert.ok(yml.includes("cron: '17 18 * * *'"));
+});
+
 (async () => {
   for (const { name, fn } of queue) {
     try { await fn(); console.log('PASS ' + name); } catch (e) { failed += 1; console.log('FAIL ' + name + '\n  ' + e.message); }

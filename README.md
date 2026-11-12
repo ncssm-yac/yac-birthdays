@@ -9,10 +9,13 @@ samples still go to **YAC IT**, marked TEST.
 
 ## How it works
 
-1. `daily.yml` runs every day from 8 AM Eastern. GitHub delays scheduled
-   runs by hours, so it tries several times and posts on the first try at
-   8 AM or later; it skips if today's already done. If the day's last try
-   (18:17 UTC) ends without reminding, the run fails, so the monitor sees it.
+1. At 8 AM New York time, an Apps Script in ncssm.yac.yakkety@gmail.com
+   (`trigger/Code.gs`) starts `daily.yml` through `workflow_dispatch` with
+   dry run off, so the reminder lands around 8 AM. GitHub's own schedule
+   starts runs hours late (1-3 PM in Nov 2026), so it is only a backup: it
+   tries several times and skips if today's already done. If the day's last
+   try (18:17 UTC) ends without reminding, the run fails, so the monitor
+   sees it.
 2. `run.js` reads the **YAC Member Directory** Sheet with the yakkety service
    account. It finds columns by header name: `First Name`, `Last Name`,
    `Birthday` (month/day, like `12/16`; a year is ignored) and `Status`.
@@ -30,6 +33,23 @@ Birthdays are personal data: they stay in the Sheet. Logs show counts only.
 | --- | --- |
 | `YAKKETY_GOOGLE_KEY` | The yakkety service account key. Viewer on the Member Directory. The Google Sheets API must be on in its project. |
 | `YAC_REPOS_TOKEN` | Fine-grained token: Actions write on `ncssm-yac/yac-chat`. |
+
+## The 8 AM trigger (`trigger/Code.gs`)
+
+Plain Apps Script, no Google data read, nothing about anyone sent: it only
+asks GitHub to run the workflow. Deploy by pasting `trigger/Code.gs` into a
+new Apps Script project in ncssm.yac.yakkety@gmail.com, then:
+
+1. Project Settings: time zone **America/New_York**.
+2. Script properties: `GITHUB_TOKEN`, a fine-grained token with
+   **Actions: read and write** on `ncssm-yac/yac-birthdays` only (set an
+   expiry and a reminder to renew it).
+3. Run `dispatch` once to check (it posts today's real reminder, if there is
+   one and it hasn't gone out yet), then run `install` once to create the
+   daily 8 AM trigger (Apps Script fires within about 15 minutes of 8).
+
+If a dispatch fails three times, Apps Script emails the script's owner and
+the GitHub schedule still posts later that day.
 
 ## Trying it
 

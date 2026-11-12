@@ -10,6 +10,11 @@ name: Birthday reminders
 # Secrets: YAKKETY_GOOGLE_KEY (the yakkety service account, Viewer on the YAC
 # Member Directory), YAC_REPOS_TOKEN (fine-grained: Actions write on
 # yac-chat). Logs show counts only, never names or dates.
+#
+# The 8 AM start comes from trigger/Code.gs, an Apps Script in
+# ncssm.yac.yakkety@gmail.com that calls workflow_dispatch with dry_run=false
+# at 8 AM New York time (owner's request, Nov 12, 2026: GitHub's schedule was
+# posting at 1-3 PM). The schedule below is only a backup if that fails.
 on:
   schedule:
     # 8 AM Eastern is 12:00 UTC in summer and 13:00 UTC in winter. GitHub
