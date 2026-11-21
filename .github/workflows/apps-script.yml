@@ -1,0 +1,140 @@
+name: Apps Script
+
+# Keeps the YAC Birthday Trigger Apps Script (apps-script/src) in step with
+# this repo. GitHub is the only source of truth: nobody pastes code into the
+# Apps Script editor.
+#
+# - Pull request: tests only.
+# - Merge to main touching apps-script/ (or Run workflow): tests, then
+#   `clasp push` to the project, then the drift check below.
+# - Every day: drift check. Downloads the live code and fails if it differs
+#   from the repo (someone edited it in the editor) or if the clasp sign-in
+#   has stopped working. Either way the run goes red the same day.
+#
+# The project is found by its title in ncssm.yac.yakkety@gmail.com's Drive and
+# created on the first deploy if it isn't there. Its ID is not a secret.
+#
+# Secret: CLASPRC_JSON, the contents of ~/.clasprc.json after
+# `clasp login` as ncssm.yac.yakkety@gmail.com. Never printed.
+on:
+  push:
+    branches: [main]
+    paths: ['apps-script/**', '.github/workflows/apps-script.yml']
+  pull_request:
+    paths: ['apps-script/**', '.github/workflows/apps-script.yml', '.github/workflows/daily.yml']
+  schedule:
+    - cron: '43 16 * * *' # any time of day is fine for the check
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: apps-script
+  cancel-in-progress: false
+
+env:
+  TITLE: YAC Birthday Trigger
+  CLASP_VERSION: 3.4.1
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: node apps-script/test/run-tests.js
+
+  sync:
+    needs: test
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm install --global "@google/clasp@$CLASP_VERSION"
+
+      - name: Sign in as the yakkety account
+        env:
+          CLASPRC: ${{ secrets.CLASPRC_JSON }}
+        run: |
+          set -euo pipefail
+          if [ -z "$CLASPRC" ]; then
+            echo "::error::The CLASPRC_JSON secret is missing. See apps-script/README.md."
+            exit 1
+          fi
+          umask 077
+          printf '%s' "$CLASPRC" > "$HOME/.clasprc.json"
+          if ! clasp --json list-scripts > "$RUNNER_TEMP/scripts.json" 2> "$RUNNER_TEMP/err.txt"; then
+            echo "::error::clasp could not sign in. The saved login has probably expired or been revoked: run clasp login again as ncssm.yac.yakkety@gmail.com and replace CLASPRC_JSON (apps-script/README.md)."
+            exit 1
+          fi
+
+      - name: Find the project
+        id: project
+        env:
+          EVENT: ${{ github.event_name }}
+        run: |
+          set -euo pipefail
+          ids=$(jq -r --arg t "$TITLE" '.[] | select(.name == $t) | .id' "$RUNNER_TEMP/scripts.json")
+          count=$(printf '%s' "$ids" | grep -c . || true)
+          if [ "$count" -gt 1 ]; then
+            echo "::error::$count Apps Script projects are called \"$TITLE\". Trash the extra ones in ncssm.yac.yakkety@gmail.com's Drive."
+            exit 1
+          fi
+          if [ "$count" -eq 0 ]; then
+            if [ "$EVENT" = "schedule" ]; then
+              echo "::error::No Apps Script project called \"$TITLE\" yet. Merge apps-script/ or run this workflow by hand to create it."
+              exit 1
+            fi
+            # Create it in an empty folder, so clasp's starter files never touch apps-script/src.
+            tmp=$(mktemp -d)
+            ids=$(cd "$tmp" && clasp --json create-script --type standalone --title "$TITLE" --rootDir . | jq -r .scriptId)
+            echo "Created \"$TITLE\"."
+          fi
+          echo "id=$ids" >> "$GITHUB_OUTPUT"
+          jq -n --arg id "$ids" '{scriptId: $id, rootDir: "src", scriptExtensions: [".gs"]}' > apps-script/.clasp.json
+          echo "Project: https://script.google.com/d/$ids/edit" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Deploy
+        if: github.event_name != 'schedule'
+        working-directory: apps-script
+        run: clasp push --force
+
+      - name: Drift check (live code vs. repo)
+        env:
+          ID: ${{ steps.project.outputs.id }}
+        run: |
+          set -euo pipefail
+          live=$(mktemp -d)
+          jq -n --arg id "$ID" '{scriptId: $id, rootDir: "src", scriptExtensions: [".gs"]}' > "$live/.clasp.json"
+          (cd "$live" && clasp pull > /dev/null)
+          bad=0
+          # Same files on both sides.
+          diff <(cd apps-script/src && ls | sort) <(cd "$live/src" && ls | sort) || bad=1
+          # Code compared as text (ignoring blank lines). The manifest compared
+          # as JSON, on the settings the repo sets (Apps Script may add defaults).
+          for f in apps-script/src/*.gs; do
+            n=$(basename "$f")
+            if [ -f "$live/src/$n" ]; then diff -B "$f" "$live/src/$n" || bad=1; fi
+          done
+          if [ -f "$live/src/appsscript.json" ]; then
+            diff <(jq -S . apps-script/src/appsscript.json) \
+                 <(jq -S --slurpfile repo apps-script/src/appsscript.json \
+                     'with_entries(select(.key as $k | $repo[0] | has($k)))' "$live/src/appsscript.json") || bad=1
+          fi
+          if [ "$bad" -ne 0 ]; then
+            echo "::error::The live Apps Script differs from apps-script/src (diff above). Someone may have edited it in the editor. Put the change in the repo, or run this workflow to overwrite the live copy with the repo."
+            exit 1
+          fi
+          echo "Live code matches the repo." | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: Forget the sign-in
+        if: always()
+        run: rm -f "$HOME/.clasprc.json"

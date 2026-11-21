@@ -9,9 +9,11 @@ samples still go to **YAC IT**, marked TEST.
 
 ## How it works
 
-1. `daily.yml` runs every day from 8 AM Eastern. GitHub delays scheduled
-   runs by hours, so it tries several times and posts on the first try at
-   8 AM or later; it skips if today's already done. If the day's last try
+1. `daily.yml` runs every day from 8 AM Eastern. The **YAC Birthday Trigger**
+   Apps Script ([`apps-script/`](apps-script/README.md)) starts it between
+   8:00 and 8:15 AM. GitHub's own schedule, which runs hours late, stays as a
+   backup: it tries several times and posts on the first try at 8 AM or
+   later; it skips if today's already done. If the day's last try
    (18:17 UTC) ends without reminding, the run fails, so the monitor sees it.
 2. `run.js` reads the **YAC Member Directory** Sheet with the yakkety service
    account. It finds columns by header name: `First Name`, `Last Name`,
