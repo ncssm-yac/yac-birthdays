@@ -1,7 +1,11 @@
 name: Birthday reminders
+run-name: ${{ inputs.caller == 'apps-script' && format('Birthday reminders (8 AM trigger{0})', inputs.dry_run && ', dry run' || '') || github.workflow }}
 
 # Every day at 8 AM Eastern: find birthdays that are today or a week away in
 # the YAC Member Directory and hand one message to ncssm-yac/yac-chat.
+# Started on time by the YAC Birthday Trigger Apps Script (apps-script/),
+# which runs every 15 minutes as ncssm.yac.yakkety@gmail.com and dispatches
+# this once a day from 8 AM New York time. The schedule below is the backup.
 # Live in YAC Leadership since Nov 6, 2026 (owner's decision; yac-chat allows
 # the yac-birthdays source in leadership and it). The made-up sample still
 # goes to YAC IT, marked TEST, so checking the posting path never reaches
@@ -12,8 +16,8 @@ name: Birthday reminders
 # yac-chat). Logs show counts only, never names or dates.
 on:
   schedule:
-    # 8 AM Eastern is 12:00 UTC in summer and 13:00 UTC in winter. GitHub
-    # delays scheduled runs, often by 4-5 hours at the top of the hour, so
+    # Backup only. 8 AM Eastern is 12:00 UTC in summer and 13:00 UTC in
+    # winter. GitHub delays scheduled runs (7-9 hours in Nov 2026), so
     # there are several tries off the hour. The gate lets through the first
     # one that is 8 AM or later in New York, and the cache stops a double.
     - cron: '17 12 * * *'
@@ -30,6 +34,10 @@ on:
         description: Skip the Sheet and post a made-up sample (Ada Test, Ben Sample) to YAC IT to check posting
         type: boolean
         default: false
+      caller:
+        description: Who started this run (the Apps Script sends apps-script; leave as is)
+        type: string
+        default: manual
 
 permissions:
   contents: read

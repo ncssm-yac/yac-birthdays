@@ -4,7 +4,9 @@
   "private": true,
   "description": "Birthday reminders for YAC leadership: one week before and the day of. Deterministic; Yakkety's tool, no model calls.",
   "scripts": {
-    "test": "node test.js"
+    "test": "node test.js && node apps-script/test/run-tests.js"
   },
-  "engines": { "node": ">=18" }
+  "engines": {
+    "node": ">=18"
+  }
 }
