@@ -17,7 +17,8 @@ because GitHub's own schedule has been running the reminders 7-9 hours late.
 ## GitHub is the source of truth
 
 Don't edit the code in the Apps Script editor. The **Apps Script** workflow
-(`.github/workflows/apps-script.yml`):
+(`.github/workflows/apps-script.yml`, which calls YAC's shared deploy in
+`ncssm-yac/yac-apps-script-deploy`):
 
 - on a pull request: runs the tests;
 - on merge to `main` (or **Run workflow**): tests, `clasp push`, then checks
@@ -32,8 +33,11 @@ the yakkety account's Drive. The first deploy creates it.
 
 1. **Apps Script API on** for `ncssm.yac.yakkety@gmail.com`:
    script.google.com/home/usersettings. (Done Nov 2026.)
-2. **Repository secret `CLASPRC_JSON`**: the contents of `~/.clasprc.json`
-   after `npx.cmd @google/clasp login` as the yakkety account. (Done Nov 2026.)
+2. **`CLASPRC_JSON`**: the contents of `~/.clasprc.json` after
+   `npx.cmd @google/clasp login` as the yakkety account. Since Nov 21, 2026
+   it is one **organization** secret for every Apps Script repo (this repo is
+   public so it can use it; setup and renewal: the `yac-apps-script-deploy`
+   README). This repo must not have its own copy, which would override it.
 3. **Merge** the pull request that adds `apps-script/`. The Apps Script
    workflow creates the project and pushes the code. Its run summary links to
    the project.
@@ -64,7 +68,7 @@ npx.cmd @google/clasp login
 Get-Content $HOME\.clasprc.json -Raw | Set-Clipboard
 ```
 
-Paste it as the new value of `CLASPRC_JSON`, then clear the clipboard
+Paste it as the new value of the `CLASPRC_JSON` organization secret, then clear the clipboard
 (`Set-Clipboard -Value " "`) and delete `$HOME\.clasprc.json`.
 
 ## Tests
