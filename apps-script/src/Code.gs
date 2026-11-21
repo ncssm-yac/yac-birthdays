@@ -12,7 +12,8 @@
  * "Apps Script" workflow. Do not edit it in the Apps Script editor: the daily
  * drift check fails if the live code and the repo differ.
  *
- * Entry points: remindBirthdays (the trigger), setup (run once), testDispatch.
+ * Entry points: remindBirthdays (the trigger), setup (run once), testDispatch,
+ * testPostToIT.
  *
  * Script Properties (Project Settings; never commit values):
  *   GITHUB_TOKEN   fine-grained token: ncssm-yac/yac-birthdays only, Actions: read and write
@@ -46,7 +47,7 @@ function remindBirthdays() {
 
     // Throws unless GitHub accepts it; Apps Script then emails the failure to
     // the account, and the next 15-minute run tries again.
-    dispatch_(props.getProperty('GITHUB_TOKEN'), !live);
+    dispatch_(props.getProperty('GITHUB_TOKEN'), { dry_run: String(!live) });
     props.setProperty('LAST_DISPATCH', mark); // only after GitHub accepted it
     Logger.log('Birthday reminders started on GitHub (' + (live ? 'live' : 'dry run') + ').');
   } finally {
@@ -54,8 +55,8 @@ function remindBirthdays() {
   }
 }
 
-/** Start daily.yml. Throws unless GitHub answers 204. */
-function dispatch_(token, dryRun) {
+/** Start daily.yml with the given inputs (plus caller). Throws unless GitHub answers 204. */
+function dispatch_(token, inputs) {
   if (!token) throw new Error('GITHUB_TOKEN is not set');
   var url = 'https://api.github.com/repos/' + REPO + '/actions/workflows/' + WORKFLOW + '/dispatches';
   var res = UrlFetchApp.fetch(url, {
@@ -66,7 +67,7 @@ function dispatch_(token, dryRun) {
       Accept: 'application/vnd.github+json',
       'X-GitHub-Api-Version': '2022-11-28'
     },
-    payload: JSON.stringify({ ref: REF, inputs: { dry_run: String(dryRun), caller: 'apps-script' } }),
+    payload: JSON.stringify({ ref: REF, inputs: Object.assign({ caller: 'apps-script' }, inputs) }),
     muteHttpExceptions: true
   });
   if (res.getResponseCode() !== 204) throw new Error('GitHub dispatch returned HTTP ' + res.getResponseCode());
@@ -83,6 +84,16 @@ function setup() {
 
 /** Check the token and the workflow from the editor: starts one dry run, which posts nothing. */
 function testDispatch() {
-  dispatch_(PropertiesService.getScriptProperties().getProperty('GITHUB_TOKEN'), true);
+  dispatch_(PropertiesService.getScriptProperties().getProperty('GITHUB_TOKEN'), { dry_run: 'true' });
   Logger.log('GitHub accepted the dispatch. Look for a dry run under Actions > Birthday reminders.');
+}
+
+/**
+ * Check the whole path from here to Google Chat: starts a sample run, which
+ * skips the Sheet and posts the made-up TEST message (Ada Test, Ben Sample)
+ * to YAC IT. Never posts to Leadership.
+ */
+function testPostToIT() {
+  dispatch_(PropertiesService.getScriptProperties().getProperty('GITHUB_TOKEN'), { dry_run: 'false', sample: 'true' });
+  Logger.log('GitHub accepted the dispatch. A TEST message should reach YAC IT within a couple of minutes.');
 }
