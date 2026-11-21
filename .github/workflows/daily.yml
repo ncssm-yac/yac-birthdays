@@ -1,5 +1,5 @@
 name: Birthday reminders
-run-name: ${{ inputs.caller == 'apps-script' && format('Birthday reminders (8 AM trigger{0})', inputs.dry_run && ', dry run' || '') || github.workflow }}
+run-name: ${{ inputs.caller == 'apps-script' && (inputs.sample && 'Birthday reminders (Apps Script TEST to YAC IT)' || format('Birthday reminders (8 AM trigger{0})', inputs.dry_run && ', dry run' || '')) || github.workflow }}
 
 # Every day at 8 AM Eastern: find birthdays that are today or a week away in
 # the YAC Member Directory and hand one message to ncssm-yac/yac-chat.

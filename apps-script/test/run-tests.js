@@ -62,7 +62,7 @@ test('from 8 AM it starts daily.yml live, once a day', () => {
   assert.strictEqual(f.url, 'https://api.github.com/repos/ncssm-yac/yac-birthdays/actions/workflows/daily.yml/dispatches');
   assert.strictEqual(f.opts.method, 'post');
   assert.strictEqual(f.opts.headers.Authorization, 'Bearer t');
-  assert.deepStrictEqual(payload(w), { ref: 'main', inputs: { dry_run: 'false', caller: 'apps-script' } });
+  assert.deepStrictEqual(payload(w), { ref: 'main', inputs: { caller: 'apps-script', dry_run: 'false' } });
   assert.strictEqual(w.store.LAST_DISPATCH, '2026-11-23 live');
   w.ctx.remindBirthdays(); // the 8:15 run
   assert.strictEqual(w.fetches.length, 1);
@@ -133,6 +133,15 @@ test('testDispatch starts a dry run', () => {
   assert.strictEqual(payload(w).inputs.dry_run, 'true');
 });
 
+test('testPostToIT starts a live sample run, which daily.yml sends to YAC IT', () => {
+  const w = world({ props: { GITHUB_TOKEN: 't' } }); // DRY_RUN unset: the test post still goes out
+  w.ctx.testPostToIT();
+  assert.deepStrictEqual(payload(w), { ref: 'main', inputs: { caller: 'apps-script', dry_run: 'false', sample: 'true' } });
+  assert.ok(!('LAST_DISPATCH' in w.store)); // does not count as the day's reminder
+  const wf = fs.readFileSync(path.join(__dirname, '..', '..', '.github', 'workflows', 'daily.yml'), 'utf8');
+  assert.ok(wf.includes("SPACE: ${{ inputs.sample == true && 'it' || 'leadership' }}"));
+});
+
 test('the manifest asks only for outside requests and triggers, in New York time', () => {
   const m = JSON.parse(fs.readFileSync(path.join(SRC, 'appsscript.json'), 'utf8'));
   assert.strictEqual(m.timeZone, 'America/New_York');
@@ -145,7 +154,7 @@ test('the manifest asks only for outside requests and triggers, in New York time
 test('daily.yml accepts the inputs the script sends', () => {
   const wf = fs.readFileSync(path.join(__dirname, '..', '..', '.github', 'workflows', 'daily.yml'), 'utf8');
   const inputs = wf.slice(wf.indexOf('workflow_dispatch:'), wf.indexOf('\npermissions:'));
-  ['dry_run:', 'caller:'].forEach((k) => assert.ok(inputs.includes(k), k + ' is not a daily.yml input'));
+  ['dry_run:', 'sample:', 'caller:'].forEach((k) => assert.ok(inputs.includes(k), k + ' is not a daily.yml input'));
 });
 
 console.log(passed + ' Apps Script tests passed.');

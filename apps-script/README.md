@@ -46,6 +46,10 @@ the yakkety account's Drive. The first deploy creates it.
    15-minute trigger.
 6. Run **`testDispatch`**. A dry run, *Birthday reminders (8 AM trigger, dry
    run)*, should appear under Actions within a minute. It posts nothing.
+   To check the whole path to Google Chat, run **`testPostToIT`**: it posts
+   the made-up TEST message (Ada Test, Ben Sample) to **YAC IT**, never
+   Leadership, and shows in Actions as *Birthday reminders (Apps Script TEST
+   to YAC IT)*.
 7. `DRY_RUN` is on until you add the Script Property `DRY_RUN` = `false`.
    While it's on, the 8 AM run is a dry run and the late backup schedule
    still posts as before. Set it to `false` to go live.
